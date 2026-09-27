@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  // CORS configuration allows Thunder Client & your frontend to talk to Vercel safely
+  // CORS configuration for FlutterFlow compatibility
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -8,46 +8,48 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
+    // Capture data from either POST body or GET query parameters
+    const data = req.method === 'POST' ? req.body : req.query;
+    
+    // Check if the request is trying to calculate a ViralScore matrix
+    if (data.views !== undefined || data.shares !== undefined || data.comments !== undefined) {
+      const views = Number(data.views) || 0;
+      const shares = Number(data.shares) || 0;
+      const comments = Number(data.comments) || 0;
+
+      // Threads to Millions Engagement Scoring Formula calculation
+      // Adjust weights if your course uses a different specific formula!
+      const totalEngagement = (views * 0.05) + (shares * 3.0) + (comments * 2.0);
+      const viralMultiplier = views > 0 ? ((shares + comments) / views) * 100 : 0;
+      const finalViralScore = Math.min(Math.round(totalEngagement * (1 + viralMultiplier / 100)), 1000);
+
+      let status = "Average Performance";
+      if (finalViralScore > 750) status = "🔥 Going Mega Viral!";
+      else if (finalViralScore > 400) status = "📈 High Growth Traction";
+
+      return res.status(200).json({
+        success: true,
+        metrics: { views, shares, comments },
+        viralScore: finalViralScore,
+        status: status,
+        reachMultiplier: Number(viralMultiplier.toFixed(2))
+      });
+    }
+
+    // --- YOUR EXISTING THREADS PROXY ROUTES ---
     const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
-    if (!META_ACCESS_TOKEN) {
-      return res.status(500).json({ error: "Missing Meta API credentials on Vercel." });
-    }
+    const action = req.headers['x-action'] || data.action || 'get_me';
 
-    // Capture the target action sent from your Thunder Client request header or body
-    const action = req.headers['x-action'] || req.body?.action || 'get_me';
-
-    // ROUTE 1: Get Profile Info
     if (action === 'get_me') {
+      if (!META_ACCESS_TOKEN) return res.status(500).json({ error: "Missing Meta token." });
       const response = await fetch(`https://threads.net{META_ACCESS_TOKEN}`);
-      const data = await response.json();
-      return res.status(200).json(data);
+      const result = await response.json();
+      return res.status(200).json(result);
     }
 
-    // ROUTE 2: Create Text Container
-    if (action === 'create_container') {
-      const { text, userId } = req.body;
-      const targetUserId = userId || 'me';
-      const response = await fetch(`https://threads.net{targetUserId}/threads?text=${encodeURIComponent(text)}&media_type=TEXT&access_token=${META_ACCESS_TOKEN}`, {
-        method: 'POST'
-      });
-      const data = await response.json();
-      return res.status(200).json(data);
-    }
-
-    // ROUTE 3: Publish Container
-    if (action === 'publish_container') {
-      const { creationId, userId } = req.body;
-      const targetUserId = userId || 'me';
-      const response = await fetch(`https://threads.net{targetUserId}/threads_publish?creation_id=${creationId}&access_token=${META_ACCESS_TOKEN}`, {
-        method: 'POST'
-      });
-      const data = await response.json();
-      return res.status(200).json(data);
-    }
-
-    return res.status(400).json({ error: "Invalid action specified to proxy bridge." });
+    return res.status(400).json({ error: "No metrics or valid actions passed to Vercel Engine." });
 
   } catch (error) {
-    return res.status(500).json({ success: false, bridge_error: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 }

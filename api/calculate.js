@@ -1,5 +1,3 @@
-import fetch from 'node-fetch'; // Only needed if you are using an older Node.js version on Vercel that lacks native fetch
-
 export default async function handler(req, res) {
   // 1. CORS configuration for FlutterFlow and Bubble compatibility
   res.setHeader('Access-Control-Allow-Credentials', true);

@@ -37,22 +37,20 @@ export default async function handler(req, res) {
         viralScore: finalViralScore,
         status: status,
         reachMultiplier: Number(viralMultiplier.toFixed(2))
-      });
-      // 4. ROUTE B: Threads API Proxy Handlers (Runs exclusively if no calculation metrics were sent)
-    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-    const dynamicToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
-    const META_ACCESS_TOKEN = dynamicToken || process.env.META_ACCESS_TOKEN;
+      }); 
+        // 4. ROUTE B: Threads API Proxy Handlers (Reads token dynamically from Bubble's body parameter)
+    const bodyToken = req.body?.token_param || req.query?.token_param;
+    const META_ACCESS_TOKEN = bodyToken || process.env.META_ACCESS_TOKEN;
 
     if (!META_ACCESS_TOKEN) {
-      return res.status(500).json({ error: "Missing Meta API credentials. Please pass a Bearer token or configure environment variables." });
+      return res.status(500).json({ error: "Missing Meta API credentials. Please pass a token_param inside your request body." });
     }
-  
     }
 
     // ROUTE 1: Get Profile Information
     if (xAction === 'get_me') {
       const fields = data.fields || 'id,username';
-      const response = await fetch(`https://threads.net{fields}&access_token=${META_ACCESS_TOKEN}`);
+     const response = await fetch(`https://threads.net{fields}&access_token=${META_ACCESS_TOKEN}`); 
       const threadsData = await response.json();
       return res.status(response.status || 200).json(threadsData);
     }

@@ -38,11 +38,15 @@ export default async function handler(req, res) {
         status: status,
         reachMultiplier: Number(viralMultiplier.toFixed(2))
       });
-    }
+      // 4. ROUTE B: Threads API Proxy Handlers (Runs exclusively if no calculation metrics were sent)
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+    const dynamicToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    const META_ACCESS_TOKEN = dynamicToken || process.env.META_ACCESS_TOKEN;
 
-    // 4. ROUTE B: Threads API Proxy Handlers (Runs exclusively if no calculation metrics were sent)
     if (!META_ACCESS_TOKEN) {
-      return res.status(500).json({ error: "Missing Meta API credentials on Vercel." });
+      return res.status(500).json({ error: "Missing Meta API credentials. Please pass a Bearer token or configure environment variables." });
+    }
+  
     }
 
     // ROUTE 1: Get Profile Information

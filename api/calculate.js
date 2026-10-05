@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // 1. CORS headers configuration
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -11,13 +10,12 @@ export default async function handler(req, res) {
 
   try {
     const data = req.method === 'POST' ? req.body : req.query;
-    const xAction = req.headers['x-action'] || data.action || 'get_me';
+    const xAction = req.headers['x-action'] || data.action || req.query?.action;
     
-    // Fallback credential lookup tracking parameter state strings
     const bodyToken = req.body?.token_param || req.query?.token_param;
     const META_ACCESS_TOKEN = bodyToken || process.env.META_ACCESS_TOKEN;
 
-    // Viral Calculator Formula Matrix Route
+    // Route A: Viral Calculator Matrix
     if (data.views !== undefined || data.shares !== undefined || data.comments !== undefined) {
       const views = Number(data.views) || 0;
       const shares = Number(data.shares) || 0;
@@ -55,13 +53,18 @@ export default async function handler(req, res) {
     // ROUTE 2: Create Text Container
     if (xAction === 'create_container') {
       const text = data.text || req.body?.text;
-      const userId = data.userId || req.body?.userId || 'me';
+      
+      // FIX: Check BOTH the URL query parameters and the JSON body parameters for the userId
+      let userId = req.query?.userId || data.userId || req.body?.userId;
+      if (!userId || userId === 'me') {
+        userId = '28550271727968403'; 
+      }
       
       if (!text) {
         return res.status(400).json({ error: "Text parameter missing." });
       }
 
-      const response = await fetch(`https://threads.net{userId}/threads?text=${encodeURIComponent(text)}&media_type=TEXT&access_token=${META_ACCESS_TOKEN}`, {
+      const response = await fetch(`https://threads.net{userId}/threads?media_type=TEXT&text=${encodeURIComponent(text)}&access_token=${META_ACCESS_TOKEN}`, {
         method: 'POST'
       });
       const threadsData = await response.json();
@@ -71,7 +74,12 @@ export default async function handler(req, res) {
     // ROUTE 3: Publish Container with Protected 7-Second Wait Loop
     if (xAction === 'publish_container') {
       const creationId = data.creationId || req.body?.creationId;
-      const userId = data.userId || req.body?.userId || 'me';
+      
+      // FIX: Check BOTH the URL query parameters and the JSON body parameters for the userId
+      let userId = req.query?.userId || data.userId || req.body?.userId;
+      if (!userId || userId === 'me') {
+        userId = '28550271727968403';
+      }
 
       if (!creationId) {
         return res.status(400).json({ error: "creationId missing." });
@@ -93,4 +101,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: error.message });
   }
 }
-
